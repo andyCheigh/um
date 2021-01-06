@@ -5,7 +5,7 @@
 *      Authors: Jae Hyun Cheigh (jcheig01), Suyu Lui (sliu21)
 *
 *      Fall 2020 - COMP40
-*      HW 7
+*      HW 6
 * 
 * 
 *      Summary: Implementation file of um_loader module. This file serves
@@ -15,267 +15,316 @@
 **************************************************************************/
 
 #include <assert.h>
+#include "bitpack.h"
 #include "um_loader.h"
+#include "arith.h"
+#include "io_handler.h"
+#include "mem_segments.h"
 
-#define REGISTER_NUM 8
+static const int REGISTER_NUM = 8;
+static const int SEQ_NUM = 100;
+static const int BYTE_SIZE = 8;
 
 /****************************************************************
  * run_um
  * Inputs: 1) File pointer
  * Output: Void
  * Description: Run the UM program.
- *              Initialize registers and segments. Then, perform
- *              UM operations.
+ *              Initialize registers and segments. Then, call
+ *              execute_um function to execute the program.
  *****************************************************************/
 
 void run_um(FILE *fp)
 {
     /* initialize program */
-    uint32_t registers[REGISTER_NUM] = {0, 0, 0, 0, 0, 0, 0, 0};
-    int seg_cap = 50000;
-    int unmap_cap = 50000;
-    Seg_T **segments = malloc(sizeof(Seg_T*) * seg_cap);
-    uint32_t *unmapped = malloc(sizeof(uint32_t) * unmap_cap);
-    int segments_len = 0;
-    int unmapped_len = 0;
-    int word_count = 0;
-
-    while (fgetc(fp) != EOF)
-    {
-        word_count++;
-    }
-
-    word_count = word_count / 4;
-    rewind(fp);
-
-    Seg_T *segment_0 = malloc(sizeof(*segment_0) +
-                       sizeof(uint32_t) * word_count);
-    segment_0->length = word_count;
-
-    uint32_t unpack;
-
-    for (int i = 0; i < word_count; i++)
-    {
-        unpack = 0;
-        unpack = unpack + (getc(fp) << 24);
-        unpack = unpack + (getc(fp) << 16);
-        unpack = unpack + (getc(fp) << 8);
-        unpack = unpack + (getc(fp) << 0);
-        segment_0->word[i] = unpack;
-    }
-
-    segments[0] = segment_0;
-    segments_len++;
-
+    UArray_T registers = reg_init();
+    Seq_T segments = Seq_new(SEQ_NUM);
+    Seq_T unmapped = Seq_new(SEQ_NUM);
+    assert(segments != NULL && unmapped != NULL);
+    init_segment_0(fp, segments);
     fclose(fp);
 
     /* execute program */
+    execute_um(registers, segments, unmapped);
+}
+
+/****************************************************************
+ * init_segment_0
+ * Inputs: 1) File pointer
+ *         2) Main memory segments
+ * Output: Void
+ * Description: Initialize segment 0.
+ *              Get the instruction word count and
+ *              store words into the segment 0 using Bitpack.
+ *****************************************************************/
+void init_segment_0(FILE *fp, Seq_T segments)
+{
+    int word_count = word_counter(fp);
+    rewind(fp);
+
+    UArray_T segment_0 = UArray_new(word_count, sizeof(uint32_t));
+    assert(segment_0 != NULL);
+
+    for (int i = 0; i < word_count; i++)
+    {
+        uint32_t *word = (uint32_t *) UArray_at(segment_0, i);
+        *word = Bitpack_newu(*word, BYTE_SIZE, 24, getc(fp));
+        *word = Bitpack_newu(*word, BYTE_SIZE, 16, getc(fp));
+        *word = Bitpack_newu(*word, BYTE_SIZE, 8, getc(fp));
+        *word = Bitpack_newu(*word, BYTE_SIZE, 0, getc(fp));
+    }
+
+    Seq_addhi(segments, segment_0);
+}
+
+/****************************************************************
+ * execute_um
+ * Inputs: 1) Uarray of registers
+ *         2) Sequence of main memory segments
+ *         3) Sequence of unmapped segment id
+ * Output: Void
+ * Description: Execute the program.
+ *              Loop until the end of insturction
+ *              word and make switch cases for
+ *              appropriate opcode for each instruction.
+ *****************************************************************/
+void execute_um(UArray_T registers, Seq_T segments, Seq_T unmapped)
+{
     uint32_t counter = 0;
     int condition = 1;
 
     while (condition == 1)
     {
-        unpack = segment_0->word[counter];
+        UArray_T segment_0 = (UArray_T) Seq_get(segments, 0);
+        uint32_t *word = (uint32_t *) UArray_at(segment_0, counter);
 
-        uint32_t opcode = (unpack & (~0U >> (32 - 4) << 28)) >> 28;
-        uint32_t a = (unpack & (~0U >> (32 - 3) << 6)) >> 6;
-        uint32_t b = (unpack & (~0U >> (32 - 3) << 3)) >> 3;
-        uint32_t c = (unpack & (~0U >> (32 - 3) << 0)) >> 0;
-        uint32_t value;
-
-
-        /* ADDED INITIALIZATIONS */
-
-        /* from arith module */
-        uint32_t b_value;
-        uint32_t c_value;
-
-        /* from io_handler module */
-        int value_i;
-        char value_o;
-
-        /* from mem_segments module */
-        Seg_T *segment;
-        Seg_T *segment_a;
-        Seg_T *segment_b;
-        Seg_T *segment_c;
-        Seg_T** new_segments;
-        uint32_t *new_unmapped;
-        int segment_b_len;
-        int new_index;
-        int length_new;
-
-        counter++;
+        uint32_t opcode;
+        unsigned a, b, c, value;
+        unpack_word(*word, &opcode, &a, &b, &c, &value);
 
         switch(opcode)
         {
             case CMOV:
-                b_value = registers[b];
-                c_value = registers[c];
-
-                if (c_value != 0)
-                {
-                    registers[a] = b_value;
-                }
+                conditional_move(registers, a, b, c);
                 break;
             case SLOAD:
-                segment_b = segments[registers[b]];
-                registers[a] = segment_b->word[registers[c]];
+                segmented_load(registers, segments, a, b, c);
                 break;
             case SSTORE:
-                segment_a = segments[registers[a]];
-                segment_a->word[registers[b]] = registers[c];
+                segmented_store(registers, segments, a, b, c);
                 break;
             case ADD:
-                b_value = registers[b];
-                c_value = registers[c];
-
-                registers[a] = ((b_value) + (c_value)) % 4294967296;
+                addition(registers, a, b, c);
                 break;
             case MUL:
-                b_value = registers[b];
-                c_value = registers[c];
-
-                registers[a] = ((b_value) * (c_value)) % 4294967296;
+                multiplication(registers, a, b, c);
                 break;
             case DIV:
-                b_value = registers[b];
-                c_value = registers[c];
-
-                registers[a] = (b_value) / (c_value);
+                division(registers, a, b, c);
                 break;
             case NAND:
-                b_value = registers[b];
-                c_value = registers[c];
-
-                registers[a] = ~((b_value) & (c_value));
+                bitwise_NAND(registers, a, b, c);
                 break;
             case HALT:
-                for (int i = 0; i < segments_len; i++)
-                {
-                    segment = segments[i];
-                    if(segment != NULL)
-                    {
-                        free(segment);
-                    }
-                }
-
-                free(segments);
-                free(unmapped);
-
-                exit(EXIT_SUCCESS);
+                halt(registers, segments, unmapped);
                 break;
             case ACTIVATE:
-                segment = malloc(sizeof(*segment) + 
-                          sizeof(uint32_t) * registers[c]);
-                segment->length = registers[c];
-
-                length_new = registers[c];
-                for (int i = 0; i < length_new; i++)
-                {
-                    segment->word[i] = 0;
-                }
-
-                if (unmapped_len != 0)
-                {
-                    new_index = unmapped[unmapped_len-1];
-                    segments[new_index] = segment;
-                    unmapped_len--;
-                }
-                else
-                {
-                    new_index = segments_len;
-                    if (new_index == seg_cap)
-                    {
-                        new_segments = malloc(sizeof(Seg_T*) * seg_cap * 2);
-                        for (int i = 0; i < seg_cap; i++)
-                        {
-                            new_segments[i] = segments[i];
-                        }
-                        free(segments);
-
-                        segments = new_segments;
-                        seg_cap = seg_cap * 2;
-                    }
-
-                    segments[new_index] = segment;
-                    segments_len++;
-                }
-
-                registers[b] = new_index;
+                map_segment(registers, segments, unmapped, b, c);
                 break;
             case INACTIVATE:
-                segment_c = segments[registers[c]];
-                free(segment_c);
-                segments[registers[c]] = NULL;
-
-                if (unmapped_len == unmap_cap)
-                {
-                    new_unmapped = malloc(sizeof(uint32_t) * unmap_cap * 2);
-                    for (int i = 0; i < unmap_cap; i++)
-                    {
-                        new_unmapped[i] = unmapped[i];
-                    }
-                    free(unmapped);
-                    unmapped = new_unmapped;
-                    unmap_cap = unmap_cap * 2;
-                }
-
-                unmapped[unmapped_len] = registers[c];
-                unmapped_len++;
+                unmap_segment(registers, segments, unmapped, c);
                 break;
             case OUT:
-                c_value = registers[c];
-
-                assert((c_value) <= 255);
-
-                value_o = (char) c_value;
-                fputc(value_o, stdout);
+                output(registers, c);
                 break;
             case IN:
-                value_i = fgetc(stdin);
-
-                if (value_i == EOF)
-                {
-                    registers[c] = ~0;
-                    break;
-                }
-
-                assert(value_i >=0 && value_i <= 255);
-
-                registers[c] = (uint32_t) value_i;
+                input(registers, c);
                 break;
             case LOADP:
-                if (registers[b] == 0)
-                {
-                    counter = registers[c];
-                    break;
-                }
-                
-                
-                segment_b = segments[registers[b]];
-                segment_b_len = segment_b->length;
-
-                free(segment_0);
-                segment_0 = malloc(sizeof(*segment_0) + 
-                            sizeof(uint32_t) * segment_b_len);
-
-                for (int i = 0; i < segment_b_len; i++)
-                {
-                    segment_0->word[i] = segment_b->word[i];
-                }
-
-                segments[0] = segment_0;
-                counter = registers[c];
+                load_program(registers, segments, &counter, b, c);
                 break;
             case LV:
-                value = unpack & (~0U >> (32 - 25));
-                a = (unpack & (~0U >> (32 - 3) << 25)) >> 25;
-                registers[a] = value;
+                a = Bitpack_getu(*word, 3, 25);
+                load_value(registers, a, value);
                 break;
             default:
-                return;
+                break;
+        }
+
+        if (opcode != LOADP)
+        {
+            counter++;
+        }
+        else
+        {
+            /* if load program, segment 0 is freed
+             * so new initialization is needed */
+            segment_0 = (UArray_T) Seq_get(segments, 0);
+        }
+
+        if (counter == (uint32_t) UArray_length(segment_0))
+        {
+            condition = 0;
         }
     }
 }
 
+
+/****************************************************************
+ * reg_init
+ * Inputs: None
+ * Output: Void
+ * Description: Initialize registers.
+ *              Make unboxed array size of 8 and initialize
+ *              each element with 0.
+ *****************************************************************/
+UArray_T reg_init()
+{
+    UArray_T registers = UArray_new(REGISTER_NUM, sizeof(uint32_t));
+    assert(registers != NULL);
+
+    for (int i = 0; i < REGISTER_NUM; i++)
+    {
+        uint32_t *reg = (uint32_t *) UArray_at(registers, i);
+        *reg = 0;
+    }
+
+    return registers;
+}
+
+/****************************************************************
+ * word_counter
+ * Inputs: 1) File pointer
+ * Output: Int
+ * Description: Count instruction words.
+ *              Get each character of the file and
+ *              divide by 4.
+ *****************************************************************/
+int word_counter(FILE *fp)
+{
+    int count = 0;
+
+    while (fgetc(fp) != EOF)
+    {
+        count++;
+    }
+
+    return count / 4;
+}
+
+/****************************************************************
+ * unpack_word
+ * Inputs: 1) Insturction word
+ *         2) Pointer to opcode
+ *         3) Pointer to register A
+ *         4) Pointer to register B
+ *         5) Pointer to register C
+ *         6) Pointer to load value
+ * Output: Void
+ * Description: Unpack instruction words.
+ *              Use bitpack to assign back input values.
+ *****************************************************************/
+void unpack_word(uint32_t word, uint32_t *opcode, unsigned *a,
+                 unsigned *b, unsigned *c, unsigned *value)
+{
+    *opcode = (uint32_t) Bitpack_getu(word, 4, 28);
+    *a = (unsigned) Bitpack_getu(word, 3, 6);
+    *b = (unsigned) Bitpack_getu(word, 3, 3);
+    *c = (unsigned) Bitpack_getu(word, 3, 0);
+    *value = (unsigned) Bitpack_getu(word, 25, 0);
+}
+
+/****************************************************************
+ * halt
+ * Inputs: 1) Uarray of registers
+ *         2) Sequence of main memory segments
+ *         3) Sequence of unmapped segment id
+ * Output: Void
+ * Description: Halt operation of UM.
+ *              Free segments and registers and exit program.
+ *****************************************************************/
+void halt(UArray_T registers, Seq_T segments, Seq_T unmapped)
+{
+    assert(registers != NULL && segments != NULL && unmapped != NULL);
+
+    for (int i = 0; i < Seq_length(segments); i++)
+    {
+        UArray_T segment = (UArray_T) Seq_get(segments, i);
+        if(segment != NULL)
+        {
+            UArray_free(&segment);
+        }
+    }
+
+    UArray_free(&registers);
+    Seq_free(&segments);
+    Seq_free(&unmapped);
+
+    exit(EXIT_SUCCESS);
+}
+
+/****************************************************************
+ * load_value
+ * Inputs: 1) Uarray of registers
+ *         2) Register A index
+ *         3) Load value
+ * Output: Void
+ * Description: Load Value operation of UM.
+ *              Get value from register A index and assign
+ *              input load value.
+ *****************************************************************/
+void load_value(UArray_T registers, unsigned a, unsigned value)
+{
+    assert(registers != NULL && a < 8);
+
+    uint32_t *a_value = (uint32_t *) UArray_at(registers, a);
+    *a_value = value;
+}
+
+/****************************************************************
+ * load_program
+ * Inputs: 1) Uarray of registers
+ *         2) Sequence of main memory segments
+ *         3) Pointer to program counter
+ *         4) Register B index
+ *         4) Register C index
+ * Output: Void
+ * Description: Load Program operation of UM.
+ *              Duplicate segment at register B index. Free
+ *              segment 0. Put duplicate segment at segment 0.
+ *              Program counter point to register C value.
+ *****************************************************************/
+void load_program(UArray_T registers, Seq_T segments, 
+                  uint32_t *counter, unsigned b, unsigned c)
+{
+    assert(registers != NULL && segments != NULL);
+    assert(b < 8 && c < 8);
+
+    uint32_t *b_value = (uint32_t *) UArray_at(registers, b);
+
+    if (*b_value == 0)
+    {
+        uint32_t *c_value = (uint32_t *) UArray_at(registers, c);
+        *counter = *c_value;
+        return;
+    }
+
+    UArray_T segment_b = (UArray_T) Seq_get(segments, *b_value);
+    int length = UArray_length(segment_b);
+    UArray_T duplicate = UArray_new(length, sizeof(uint32_t));
+    assert(duplicate != NULL);
+
+    for (int i = 0; i < length; i++)
+    {
+        uint32_t *seg_b_value = (uint32_t *) UArray_at(segment_b, i);
+        uint32_t *dup_value = (uint32_t *) UArray_at(duplicate, i);
+        *dup_value = *seg_b_value;
+    }
+
+    UArray_T segment_0 = Seq_get(segments, 0);
+    UArray_free(&segment_0);
+
+    Seq_put(segments, 0, (void *) duplicate);
+    uint32_t *c_value = (uint32_t *) UArray_at(registers, c);
+    *counter = *c_value;
+}

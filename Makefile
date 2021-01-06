@@ -1,9 +1,9 @@
-# Makefile for um (Comp 40 Assignment 7)
+# Makefile for um (Comp 40 Assignment 6)
 # 
 # Includes build rules for um
 #
 #
-# Last updated: December 4th, 2020
+# Last updated: November 20th, 2020
 
 
 ############## Variables ###############
@@ -22,7 +22,7 @@ IFLAGS = -I/comp/40/build/include -I/usr/sup/cii40/include/cii
 # to use the GNU 99 standard to get the right items in time.h for the
 # the timing support to compile.
 # 
-CFLAGS = -g -std=gnu99 -O3 -Wall -Wextra -Werror -Wfatal-errors -pedantic $(IFLAGS)
+CFLAGS = -O2 -g -std=gnu99 -Wall -Wextra -Werror -Wfatal-errors -pedantic $(IFLAGS)
 
 # Linking flags
 # Set debugging information and update linking path
@@ -33,7 +33,7 @@ LDFLAGS = -g -L/comp/40/build/lib -L/usr/sup/cii40/lib64
 # All programs cii40 (Hanson binaries) and *may* need -lm (math)
 # 40locality is a catch-all for this assignment, netpbm is needed for pnm
 # rt is for the "real time" timing library, which contains the clock support
-LDLIBS = -lcii40-O2 -lm
+LDLIBS = -lcii40-O2 -lbitpack -l40locality -larith40 -lnetpbm -lcii40 -lm -lrt
 
 # Collect all .h files in your directory.
 # This way, you can never forget to add
@@ -58,8 +58,11 @@ all: um
 
 ## Linking step (.o -> executable program)
 
-um: um.o um_loader.o
+um: um.o um_loader.o arith.o io_handler.o mem_segments.o
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+writetests: umlabwrite.o umlab.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:
-	rm -f um *.o
+	rm -f um writetests *.o

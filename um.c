@@ -5,7 +5,7 @@
 *      Authors: Jae Hyun Cheigh (jcheig01), Suyu Lui (sliu21)
 *
 *      Fall 2020 - COMP40
-*      HW 7
+*      HW 6
 * 
 * 
 *      Summary: Driver file that runs the main function.
@@ -30,5 +30,5 @@ int main(int argc, char *argv[])
 
     run_um(fp);
 
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }

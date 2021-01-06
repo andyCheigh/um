@@ -1,0 +1,14 @@
+halt.um
+halt-verbose.um
+add.um
+output.um
+print-six.um
+mult2.um
+div.um
+cond_mov.um
+cond_mov2.um
+bit_NAND.um
+input.um
+segmented.um
+map.um
+load_program.um
