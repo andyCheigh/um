@@ -1,25 +1,6 @@
 NAME:
-Jae Hyun Cheigh
+Jae Hyun Cheigh <br/>
 SuYu Liu
-
-## WHAT HAS/HAS NOT BEEN IMPLEMENTED.
-
-<br/>
-1. um_loader by initializing registers and memory segments and executing
-the program by reading in instructions words. Also, the module contains
-3 um operations that are used at program level: halt, load value, load
-program. <br/>
-
-2. arith by implementing 5 um operations that are used for arithmetic
-purposes: conditional move, addition, multiplication, division,
-bitwise NAND. <br/>
-
-3. io_handler by implementing 2 um operations that are used for I/O
-of program: output, input. <br/>
-
-4. mem_segments by implementing 4 um operations that are used for
-dealing with memory segments: segmented load, segmented store,
-map segment, unmap segment. <br/>
 
 ## ARCHITECTURE:
 
