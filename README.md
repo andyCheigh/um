@@ -1,15 +1,6 @@
-# Homework 6 (UM)
-
 NAME:
-Jae Hyun Cheigh(jcheig01)
-SuYu Liu(sliu21)
-
-## ACKNOWLEDGEMENT:
-
-1. Julia helped us clarify some concepts during our design stage. <br/>
-
-2. Hanson's book provides us with some very useful data structures during
-implementation stage.
+Jae Hyun Cheigh
+SuYu Liu
 
 ## WHAT HAS/HAS NOT BEEN IMPLEMENTED.
 
@@ -29,14 +20,6 @@ of program: output, input. <br/>
 4. mem_segments by implementing 4 um operations that are used for
 dealing with memory segments: segmented load, segmented store,
 map segment, unmap segment. <br/>
-
-## DEPARTURE FROM DESIGN:
-
-We made one more module named um_loader that serves as the core module
-as it handles initialization and execution of the program. We believed
-this module was necessary because if these steps were all contained in the
-main file, it would've been disorganized, which defeats the purpose of
-abstraction and modularity.
 
 ## ARCHITECTURE:
 
