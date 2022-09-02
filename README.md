@@ -4,7 +4,7 @@ SuYu Liu
 
 ## WHAT HAS/HAS NOT BEEN IMPLEMENTED.
 
-To the best of our knowledge, we have carefully implemented: <br/>
+<br/>
 1. um_loader by initializing registers and memory segments and executing
 the program by reading in instructions words. Also, the module contains
 3 um operations that are used at program level: halt, load value, load
