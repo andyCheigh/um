@@ -20,13 +20,13 @@ implements abstractions for 2 um operations: output, input. <br/>
 memory segments. With this, it implements abstractions for 4 um 
 operations: segmented load, segmented store, map segment, unmap segment. <br/>
 
-## EXECUTING 50 MILLION INSTRUCTIONS:
+## Executing 50 Million Instructions:
 We received a test file called midmark.um which contains more than 80 million
 instructions. By using time command, our program ran midmark.um in
 6.56 seconds. By multiplying 5/8 from this value, we can say that 
 emulator runs 50 million insturctions in approximately 4.1 seconds.
 
-## UNIT TESTS:
+## Unit Tests:
 1. halt.um <br/>
 Test if halt operation exits program with freeing all memory.
 
