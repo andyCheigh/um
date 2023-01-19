@@ -1,28 +1,7 @@
-## NAME:<br/>
-Jae Hyun Cheigh<br/>
-SuYu Liu
+# Universal Machine (UM)
+This project emulates a virtual machine that runs by instruction words encoded in the 32-bit identifiers.
 
-## WHAT HAS/HAS NOT BEEN IMPLEMENTED.
-
-<br/>
-1. um_loader by initializing registers and memory segments and executing
-the program by reading in instructions words. Also, the module contains
-3 um operations that are used at program level: halt, load value, load
-program. <br/>
-
-2. arith by implementing 5 um operations that are used for arithmetic
-purposes: conditional move, addition, multiplication, division,
-bitwise NAND. <br/>
-
-3. io_handler by implementing 2 um operations that are used for I/O
-of program: output, input. <br/>
-
-4. mem_segments by implementing 4 um operations that are used for
-dealing with memory segments: segmented load, segmented store,
-map segment, unmap segment. <br/>
-
-## ARCHITECTURE:
-
+## Architecture:
 1. um_loader used "uarray" and "seq" Hanson modules for registers and
 memory segments. Also, it used "bitpack" module to get instruction words
 and necessary values and opcodes from the words. It used arith, io_handler,
@@ -42,14 +21,12 @@ memory segments. With this, it implements abstractions for 4 um
 operations: segmented load, segmented store, map segment, unmap segment. <br/>
 
 ## EXECUTING 50 MILLION INSTRUCTIONS:
-
 We received a test file called midmark.um which contains more than 80 million
 instructions. By using time command, our program ran midmark.um in
 6.56 seconds. By multiplying 5/8 from this value, we can say that 
 emulator runs 50 million insturctions in approximately 4.1 seconds.
 
 ## UNIT TESTS:
-
 1. halt.um <br/>
 Test if halt operation exits program with freeing all memory.
 
@@ -109,9 +86,3 @@ same value of '2'.
 15. load_program.um <br/>
 Test if load program operation loads program and skip printing
 'h' and 'E' and directly prints 'y'.
-
-### Additional Info
-
-Time for analyzing homework: 4 Hours <br/>
-Time for preparing design: 10 Hours <br/>
-Time for solving the problems after analysis: 20 Hours
